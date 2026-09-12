@@ -395,16 +395,54 @@ def build_manifest(
             ),
         },
     }
-
 def write_manifest(manifest: dict) -> Path:
+    """Write a manifest to data/manifests/<prediction_id>.json.
+
+    If a manifest already exists for this prediction_id, this function
+    is a no-op when the content is identical (re-running the same
+    prediction produces the same bytes, so no change) and raises when
+    the content differs.
+
+    The reason for raising rather than overwriting: once a manifest is
+    referenced by a prediction log line, its hash is recorded there.
+    Rewriting the manifest would break the link between the log entry
+    and its provenance, and reproduce.py would correctly report
+    NOT VERIFIED. The correct way to change a manifest is to delete
+    both the log line and the manifest and re-log the prediction.
+
+    Uses os.replace, not Path.rename: on Windows, rename refuses to
+    overwrite an existing target, while os.replace is atomic and
+    overwrites on both POSIX and Windows.
+    """
     pid = manifest["prediction_id"]
     d = _manifest_dir()
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{pid}.json"
 
+    new_bytes = json.dumps(manifest, sort_keys=True, indent=2).encode("utf-8")
+    new_sha = hash_bytes(new_bytes)
+
+    if path.exists():
+        existing_bytes = path.read_bytes()
+        existing_sha = hash_bytes(existing_bytes)
+
+        if existing_bytes == new_bytes:
+            # Identical content -- nothing to do, and the hash the
+            # log recorded still matches what's on disk.
+            return path
+
+        raise ValueError(
+            f"manifest {path} already exists with a different hash.\n"
+            f"  existing: {existing_sha}\n"
+            f"  new:      {new_sha}\n"
+            f"Refusing to overwrite. Once a manifest is referenced by a\n"
+            f"prediction log line, its bytes must not change. To replace\n"
+            f"it, delete both the log line and the manifest, then re-log\n"
+            f"the prediction."
+        )
+
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(manifest, sort_keys=True, indent=2),
-                   encoding="utf-8")
+    tmp.write_bytes(new_bytes)
     os.replace(tmp, path)
     return path
 
