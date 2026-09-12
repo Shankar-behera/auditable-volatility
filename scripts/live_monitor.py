@@ -231,7 +231,30 @@ def main():
     origin_date = str(dates[-1])[:10]
     prediction_id = None
 
+    # Build the prediction ID up front so we can check whether it's
+    # already logged BEFORE writing any snapshots or a manifest.
+    # Re-running live_monitor.py on the same day must be a no-op, not
+    # an error -- and it must not attempt to overwrite a manifest
+    # that's already tied to a logged prediction (write_manifest
+    # correctly refuses to do that).
+    from src.predictions import read_predictions
+
+    pid_str = (
+        f"{ticker_key.upper().replace('^', '').replace('/', '-')}"
+        f"_{origin_date}_{args.horizon}"
+    )
+
+    already_logged = False
     if not args.no_record:
+        existing = read_predictions(ticker_key)
+        if not existing.empty and "prediction_id" in existing.columns:
+            already_logged = (existing["prediction_id"] == pid_str).any()
+
+    if already_logged:
+        print(f"[log] prediction {pid_str} already logged; "
+              f"skipping manifest and log write")
+        prediction_id = pid_str
+    elif not args.no_record:
         try:
             import pandas as _pd
 
@@ -250,11 +273,6 @@ def main():
             }
             garch_path, garch_sha = store_snapshot(
                 ticker_key, "garch", garch_params, "json")
-
-            pid_str = (
-                f"{ticker_key.upper().replace('^', '').replace('/', '-')}"
-                f"_{origin_date}_{args.horizon}"
-            )
 
             manifest = build_manifest(
                 prediction_id=pid_str,
