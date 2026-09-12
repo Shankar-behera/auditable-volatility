@@ -1,209 +1,200 @@
-# Validation Results
+# auditable-volatility
 
-## Data
+A GARCH volatility forecaster whose every prediction is logged with
+content-addressed provenance and can be independently reproduced and
+verified by a third party.
 
-Real daily S&P 500 closes, 2018-01-01 to 2024-12-31 (1,760 trading days),
-spanning the Feb 2018 "Volmageddon" spike, the Q4 2018 rate-driven selloff,
-the Feb–Mar 2020 COVID crash, the 2020 recovery, the 2022 bear market, and
-into 2024. Fetched via `yfinance` (`^GSPC`); a FRED-sourced equivalent
-(S&P 500 index level) was used during initial development where a
-sandboxed environment couldn't reach Yahoo Finance directly.
+The claim: **any prediction this system has made can be checked.** The
+prediction, the inputs that produced it, and the code that ran are all
+recorded, hashed, and committed to git before the outcome is known. A
+stranger can clone the repo, pick a prediction ID, and run one command
+to verify it.
 
-## Method
+```bash
+git clone  https://github.com/Shankar-behera/auditable-volatility.git
+cd auditable-volatility
+pip install -r requirements.txt
+python scripts/reproduce.py --latest GSPC --verbose
+```
 
-1. **Monotonicity sweep** — run CETE on synthetic windows of increasing
-   noise std; the energy score should increase monotonically.
-2. **Synthetic regime switch** — a labeled low-vol → high-vol → low-vol
-   series; the energy trajectory should show the same shape.
-3. **Real-data correlation** — the test that actually matters: correlate
-   CETE's energy score against rolling realized volatility (std dev) on
-   the *same* windows, over real market history. Steps 1–2 can pass even
-   for a model that's learned nothing generalizable; step 3 can't be
-   gamed the same way.
+---
 
-## Before fixing
+## What this system does
 
-| Test | Result |
-|---|---|
-| Monotonicity sweep | Failed — energy was highest for the *smallest* std (0.001 → 43.5) and near-zero for the largest (0.1 → 0.41) |
-| Synthetic regime switch | Failed — average energy was higher in the "calm" segments than the "volatile" middle segment |
-| Real-data correlation | **-0.24** (weak, wrong sign) |
-| % windows flagged HIGH_UNCERTAINTY on real data | 92.9% (classifier fires almost everywhere — no discriminating power) |
+Once per trading day, for a configured ticker, it produces:
 
-## Root causes
+* a **volatility forecast** for the next 10 trading days, from GARCH(1,1)
+* a **screen flag**, indicating whether the current trailing window's
+  variance is in the top 5% of its own historical distribution
 
-**Bug 1 — divergent gradient term.** `compute_gradient` contained
-`-0.1/(mag+1e-6)`, a log-barrier that diverges as the encoded state's
-magnitude shrinks — which happens exactly when the input window is calm.
-This injected large synthetic momentum into calm windows. Fixing this
-alone raised the real-data correlation only to **+0.15** — right
-direction, far too weak, meaning a second bug dominated.
+Every prediction is written to an append-only log *before* its outcome
+is known. When the forecast horizon elapses, realized volatility is
+computed and appended as a resolution. The log is committed to git at
+prediction time, so the git history is the public record.
 
-**Bug 2 — scale-erasing operator (the dominant bug).** One of the four
-candidate update operators blended together each step,
-`op3 = state * tanh(|state|) / |state|`, is a saturating normalizer.
-Traced directly: over 20 relaxation steps, a calm window's mean state
-magnitude *grew* (0.036 → 0.052) while a volatile window's *shrank*
-(0.35 → 0.21) — the dynamics were compressing away the exact amplitude
-difference that made the signal informative. Confirming test: the
-encoded spectral power measured immediately after `encode()`, before any
-relaxation dynamics ran, already correlated **0.956** with real realized
-volatility. The elaborate momentum/metric/operator system was destroying
-a signal that was already good at the input stage.
+## What makes it auditable
 
-## Fix
+Three properties, each enforced by code:
 
-Rather than delete the relaxation dynamics outright (they may carry
-legitimate regime-transition structure via the metric's curvature
-evolution), `final_energy_score` is now anchored to the pre-dynamics
-spectral power, with the relaxation process contributing only a small
-bounded modulation (±10% from phase variance, −2% from metric variance)
-instead of overwriting the signal with the scale-erased converged
-magnitude. Classification thresholds were also switched from hardcoded
-absolute cutoffs (meaningless once the energy scale changed, and not
-portable across assets/timeframes anyway) to percentile-relative
-classification within each run.
+**1. Predictions are recorded before outcomes.**
 
-## After fixing
+The log line exists before anyone knows whether the forecast was right.
+There is no code path that can revise a logged prediction.
 
-| Test | Result |
-|---|---|
-| Monotonicity sweep | Passed — clean monotonic increase across all tested std values |
-| Synthetic regime switch | Passed — low(0.001) → high(0.095) → low(0.016), ~100x contrast |
-| Real-data correlation | **0.956** |
-| % windows flagged HIGH_UNCERTAINTY on real data | 25.3% (by construction of the 75th-percentile cutoff) |
-| Top-8 highest-energy windows detected | Land on Feb–Apr 2020 (COVID crash) and mid-2022 (rate-hike bear market) — real, named market events, not arbitrary dates |
+**2. Inputs are content-addressed.**
 
-![CETE energy vs realized volatility, real S&P 500 2018-2024](../outputs/sample_results/cete_energy_vs_volatility.png)
+Every prediction writes snapshots of the exact bytes the model consumed
+-- the return series and the fitted GARCH parameters -- under filenames
+that *are* their SHA-256 hashes. A manifest records the hashes, plus the
+git SHA and dependency versions. Modifying any input is detectable.
 
-## Baseline comparison — does the complexity earn its keep?
+**3. Verification is one command.**
 
-The obvious follow-up: is CETE's spectral-entropy encoding + relaxation
-dynamics adding anything over a much simpler estimator, or reconstructing
-the same information through a more expensive path?
-`scripts/baseline_comparison.py` checks this against two baselines:
+`scripts/reproduce.py` reads a manifest, verifies every hash in the
+chain, recomputes the forecast from the recorded parameters, and reports
+`VERIFIED` or the specific reason it isn't.
 
-| Estimator | Correlation with realized volatility |
-|---|---|
-| CETE energy (this project, post-fix) | **0.956** |
-| GARCH(1,1) conditional volatility | 0.729 |
-| CETE vs GARCH(1,1) | 0.727 |
+See [docs/AUDIT.md](docs/AUDIT.md) for the full guide and
+[docs/METHODOLOGY.md](docs/METHODOLOGY.md) for the model and evaluation
+description.
 
-**The honest finding: CETE's high correlation is expected, not
-impressive, once you look at what it's actually computing.** By
-Parseval's theorem, a window's total FFT power and its time-domain
-variance are proportional. Checked directly: CETE's own pre-dynamics
-spectral power correlates **>0.999** with plain `np.var(window)` on this
-data — the entropy-reweighting in `encode()` and the bounded modulation
-from the relaxation dynamics amount to a near-constant rescaling of a
-one-line variance calculation, not new information.
+---
 
-GARCH(1,1)'s lower correlation (0.729) is not GARCH performing worse —
-it's GARCH doing a genuinely harder, causal job: its conditional
-volatility at time *t* is a forecast built only from returns *before* t,
-while both CETE's energy and the realized-volatility ground truth here
-are computed non-causally, from the same centered window. It's not an
-apples-to-apples contest; it's the difference between measuring a window
-and predicting one. That comparison needed to be made fairly — see below.
+## Quick start
 
-![Baseline comparison: CETE vs GARCH(1,1) vs realized volatility](../outputs/sample_results/baseline_comparison.png)
+```bash
+python -m venv .venv
 
-## Making it deployable: the causal forecasting test
+# Linux/macOS
+source .venv/bin/activate
 
-The comparison above isn't one CETE can actually be deployed on: a
-centered window uses data from *after* the timestamp it's scored against,
-which no live system has access to. `scripts/causal_evaluation.py` reruns
-the comparison the only way that matters for real use: at each origin,
-using ONLY past returns to forecast FUTURE, not-yet-observed volatility.
+# Windows
+.venv\Scripts\activate
 
-| Forecaster (causal) | Correlation with future realized volatility |
-|---|---|
-| CETE (trailing window) | 0.374 |
-| **Naive persistence** (assume next vol = last window's vol) | **0.429** |
-| GARCH(1,1) | 0.660 |
+pip install -r requirements.txt
+```
 
-**CETE loses to the simplest possible baseline.** Persistence — the
-"assume nothing changes" forecast — beats it. This matters because
-volatility clustering (calm/turbulent periods persisting) is well known
-and easy to exploit; a forecaster that can't even match that naive
-exploitation isn't adding value.
+Run the monitor once:
 
-I tested one plausible fix: letting CETE's momentum/metric state persist
-*across* windows instead of resetting each call, on the theory that its
-dynamical variables could accumulate the kind of recursive memory that
-gives GARCH its edge (GARCH's defining feature is that today's variance
-estimate depends recursively on yesterday's). Result: correlation was
-unchanged (0.374 → 0.374). CETE's momentum doesn't function as a memory
-mechanism in the way its name suggests — it's overwritten by fresh
-per-window dynamics within the same 20-step relaxation regardless of
-what's carried in.
+```bash
+python scripts/live_monitor.py --ticker ^GSPC
+```
 
-**Conclusion: CETE is not a competitive volatility forecaster, and no
-cheap fix changes that.** This is stated plainly rather than reframed,
-because the alternative — quietly shipping a forecaster that loses to
-"assume nothing changes" — would be a worse outcome for a portfolio
-project than admitting the honest limit.
+Verify any prediction:
 
-## What CETE is legitimately good at: a zero-false-positive screen
+```bash
+python scripts/reproduce.py --latest GSPC --verbose
+python scripts/reproduce.py GSPC_2026-09-11_10
+python scripts/reproduce.py --all GSPC
+```
 
-Forecasting the *magnitude* of future volatility and *flagging* that a
-window is unusual are different tasks. CETE's percentile-based verdict
-was tested against an independent ground truth — days with an absolute
-return in the top 5% of the whole series ("crisis days") — asking only
-"does a flagged window contain one of these":
+Resolve matured predictions and regenerate the track record:
 
-| Metric | Value |
-|---|---|
-| Precision | **1.000** (zero false positives) |
-| Recall | 0.422 |
-| F1 | 0.593 |
+```bash
+python scripts/score_outcomes.py --ticker ^GSPC
+python scripts/publish_report.py --outdir docs/track_record
+```
 
-At its default threshold, every single window CETE flagged
-`HIGH_UNCERTAINTY_FLAGGED` really did contain an extreme-move day — on
-real S&P 500 data, with no model fitting required. It misses more than
-half of crisis windows (conservative), so it cannot replace a real
-detector, but a free, deterministic, zero-false-positive pre-screen is a
-genuinely useful, honestly-scoped building block: e.g. deciding when a
-more expensive model (a GARCH refit, a risk-desk review) is worth
-triggering, without wasting that budget on windows CETE would correctly
-ignore.
+---
 
-## Final design: `src/hybrid.py`
+## Repository layout
 
-Given the above, the coherent, honestly-positioned system built into this
-repo is `HybridVolatilityMonitor`: **GARCH(1,1) provides the volatility
-forecast (the number to act on); CETE's percentile flag provides a cheap,
-always-on anomaly screen (the trigger for when to look closer or refit)**.
-Neither component is redundant with the other's failure mode — GARCH
-needs periodic refitting and gives no free screening signal between fits;
-CETE needs no fitting at all but isn't a forecaster. This is the
-significant difference from earlier drafts of this project: as a
-standalone volatility detector CETE has no edge over the fitting-free or
-the well-established baselines it was checked against; wired into a
-system where its actual demonstrated property (precision-first flagging)
-is the job asked of it, it's doing real work.
+```text
+src/
+  cete.py              The CETE score (entropy-weighted spectral power).
+  data.py              Versioned, validated, cached data layer.
+  regime.py            Scoring, evaluation, operating curves.
+  garch_filter.py      Recursive GARCH state update between refits.
+  predictions.py       Append-only prediction log (JSONL).
+  manifest.py          Content-addressed provenance.
+  metrics.py           Shared correlation and error metrics.
 
-![Causal forecasting comparison: CETE vs persistence vs GARCH(1,1)](../outputs/sample_results/causal_forecast_comparison.png)
+scripts/
+  live_monitor.py            Daily prediction entrypoint.
+  score_outcomes.py          Resolve matured predictions.
+  publish_report.py          Generate Markdown track record.
+  reproduce.py               Verify a prediction end to end.
+  causal_evaluation.py       Leakage-free forecasting + screening eval.
+  baseline_comparison.py     Retrospective estimator comparison.
+  transition_evaluation.py   Changepoint detection comparison.
+  run_analysis.py            Basic pipeline: fetch -> score -> plot.
 
-## Limitations / future work
+data/
+  predictions/<TICKER>.jsonl     Append-only prediction log (committed).
+  snapshots/<TICKER>/...         Content-addressed inputs (committed).
+  manifests/<prediction_id>.json Provenance records (committed).
 
-- The current window size (64 trading days) and step (10 days) were
-  inherited from the original design, not tuned. A parameter sweep over
-  window size vs. detection lag would be a natural next step.
-- CETE's flag recall (0.42) is a direct consequence of the 75th-percentile
-  cutoff; lowering it would trade precision for recall. Worth exploring
-  whether a different cutoff, or an ensemble with a second cheap signal,
-  can move the precision/recall trade-off favorably rather than just
-  sliding along it.
-- `HybridVolatilityMonitor` currently fits GARCH once per `analyze()`
-  call; a real deployment would separate "cheap CETE screen runs on every
-  new bar" from "expensive GARCH refit runs on a schedule or when
-  screened".
-- Untested: whether CETE's metric-curvature evolution captures regime
-  *transition sharpness* specifically (as opposed to volatility level),
-  which neither `np.var()` nor GARCH's smooth conditional-variance path
-  are designed to isolate. The causal forecasting test above shows it
-  doesn't help predict the *level*; a separate, transition-specific
-  evaluation (e.g. changepoint-detection lag/precision) has not yet been
-  run and would be the next thing to check before concluding there's
-  nothing left to recover from the dynamical component.
+docs/
+  AUDIT.md            How a third party verifies a prediction.
+  METHODOLOGY.md      Model, target definition, evaluation.
+  RESULTS.md          Research write-up, including the negative result.
+  track_record/       Generated accuracy reports.
+
+tests/
+  test_data.py        Data layer: caching, validation, fallback.
+  test_cete.py        Engine, scoring, leakage guards.
+  test_predictions.py Prediction log: idempotency, corruption tolerance.
+  test_manifest.py    Provenance: content addressing, hash verification.
+```
+
+---
+
+## The research behind it
+
+This project began as **CETE** (Chrono-Entropic Topodynamic Engine), a
+hand-designed spectral-entropy volatility model with a relaxation
+dynamics layered on top.
+
+The evaluation showed it reduces to a variance calculation and loses to
+GARCH on every honest test. That negative result is documented in full
+in [docs/RESULTS.md](docs/RESULTS.md).
+
+The production system uses GARCH(1,1), because it works. The interesting
+engineering is the provenance layer around it.
+
+---
+
+## Testing
+
+```bash
+# Offline tests (default)
+pytest tests/ -v
+
+# Include live-fetch tests
+pytest tests/ -v -m network
+```
+
+`pytest.ini` registers the `network` marker and deselects those tests by
+default, so the offline suite is deterministic.
+
+---
+
+## Scope
+
+This is a research codebase, not a production trading system.
+
+What it does well:
+
+* versioned data
+* honest evaluation
+* immutable prediction logging
+* content-addressed provenance
+* independent verification of predictions
+
+What it does not do:
+
+* portfolio risk
+* position sizing
+* execution
+* compliance
+* complete external audit trails
+
+It is not registered as a financial model and has no named owner. It
+should not be the basis of any trading decision without independent
+review.
+
+---
+
+## License
+
+MIT -- see [LICENSE](LICENSE).

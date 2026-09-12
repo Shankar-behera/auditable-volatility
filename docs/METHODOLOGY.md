@@ -148,5 +148,5 @@ python -c "from src.predictions import accuracy_summary; print(accuracy_summary(
 Re-generate the reports:
 
 ```bash
-python scripts/publish_report.py cde
+python scripts/publish_report.py --outdir docs/track_record
 ```
