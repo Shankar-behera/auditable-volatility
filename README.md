@@ -11,7 +11,7 @@ stranger can clone the repo, pick a prediction ID, and run one command
 to verify it.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/Shankar-behera/auditable-volatility.git
 cd auditable-volatility
 pip install -r requirements.txt
 python scripts/reproduce.py --latest GSPC --verbose
