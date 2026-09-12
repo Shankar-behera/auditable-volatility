@@ -1,0 +1,23 @@
+CAUSAL FORECASTING EVALUATION
+(predicting FUTURE, unseen volatility from PAST data only)
+============================================================
+N forecast points: 169
+Correlation: CETE forecast        vs future realized vol = 0.3735
+Correlation: Naive persistence    vs future realized vol = 0.4294
+Correlation: GARCH(1,1)           vs future realized vol = 0.6606
+
+=> CETE does NOT beat naive persistence as a forecaster.
+=> GARCH(1,1) remains the better forecaster. Use it for the volatility number.
+
+CRISIS-FLAG CLASSIFIER EVALUATION
+(retrospective/near-real-time: does the flag catch extreme-move windows?)
+============================================================
+Crisis-day threshold (95th pct |return|): 0.0241 (88 days)
+TP=43 FP=0 FN=59 TN=68
+Precision: 1.000  Recall: 0.422  F1: 0.593
+
+=> Interpretation: CETE's flag is CONSERVATIVE but RELIABLE — when it
+   fires, it means something (high precision); it won't catch every
+   crisis window (moderate recall). Legitimate as a free pre-screen
+   to decide when a more expensive model (e.g. GARCH refit) is worth
+   running, not as a standalone crisis detector.

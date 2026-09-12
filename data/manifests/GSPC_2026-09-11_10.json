@@ -1,0 +1,48 @@
+{
+  "code": {
+    "git_dirty": false,
+    "git_sha": null
+  },
+  "environment": {
+    "arch": "8.0.0",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3",
+    "python": "3.11.7",
+    "yfinance": "1.1.0"
+  },
+  "garch_parameters": {
+    "alpha": 0.10421335854605537,
+    "beta": 0.8172005510063958,
+    "eps_last": 0.7748559645188275,
+    "mu": 0.08135169678347204,
+    "n_returns_at_fit": 750,
+    "omega": 0.061742984211863854,
+    "path": "data\\snapshots\\GSPC\\garch\\ec978cad579742b5b7718c3751c957647ec8ba8dd73e61b921afe1fd063d0648.json",
+    "sha256": "ec978cad579742b5b7718c3751c957647ec8ba8dd73e61b921afe1fd063d0648",
+    "sigma2_last": 0.5550685665689298
+  },
+  "horizon_days": 10,
+  "model_config": {
+    "dist": "normal",
+    "mean": "Constant",
+    "p": 1,
+    "q": 1,
+    "vol": "Garch"
+  },
+  "origin_date": "2026-09-11",
+  "prediction_id": "GSPC_2026-09-11_10",
+  "price_snapshot": {
+    "first_date": "2023-09-15",
+    "last_date": "2026-09-11",
+    "n_observations": 750,
+    "path": "data\\snapshots\\GSPC\\prices\\b431d9b4481912f1e7350b666c603f3dd41d278950a4001990bf786fbaca2eb4.parquet",
+    "sha256": "b431d9b4481912f1e7350b666c603f3dd41d278950a4001990bf786fbaca2eb4"
+  },
+  "schema_version": 1,
+  "ticker": "GSPC",
+  "verification": {
+    "note": "Absolute tolerance on forecast_vol. Recomputed value must satisfy |recomputed - logged| <= tolerance_abs.",
+    "tolerance_abs": 1e-06
+  },
+  "window_size": 64
+}

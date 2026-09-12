@@ -1,0 +1,7 @@
+CETE REGIME DETECTION — RUN REPORT
+==================================================
+Data source: real (S&P 500 / ^GSPC, 2018-01-01 to 2024-12-31)
+Windows analyzed: 170 (size=64, step=10)
+High-uncertainty windows: 43 (25.3%)
+Energy score range: [0.000762, 0.067878], mean=0.006877
+Correlation vs realized volatility: 0.9560

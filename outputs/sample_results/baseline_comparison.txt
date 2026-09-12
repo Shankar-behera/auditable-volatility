@@ -1,0 +1,18 @@
+BASELINE COMPARISON
+==================================================
+Windows: 170 (size=64, step=10)
+Correlation: CETE energy      vs realized volatility = 0.9560
+Correlation: GARCH(1,1) cond.  vs realized volatility = 0.7295
+Correlation: CETE energy      vs GARCH(1,1)           = 0.7271
+
+Interpretation:
+CETE's correlation with realized volatility is very high because both are
+computed FROM THE SAME WINDOW (non-causal): by Parseval's theorem, total FFT
+spectral power and time-domain variance of a window are proportional. CETE's
+own pre-dynamics spectral power correlates >0.999 with plain np.var(window)
+on this data -- the entropy-reweighting and relaxation dynamics are a
+near-constant rescaling of a one-line variance calculation, not new
+information. GARCH(1,1)'s conditional volatility, by contrast, is a genuine
+causal forecast built only from PAST returns, so its correlation with the
+same (non-causal) realized-vol window is naturally lower -- it is solving a
+harder problem, not a worse one.

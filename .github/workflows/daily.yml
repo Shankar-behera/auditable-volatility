@@ -1,0 +1,140 @@
+# Daily volatility forecast pipeline.
+#
+# Runs live_monitor.py for each configured ticker, then score_outcomes.py
+# to resolve any matured predictions, then publish_report.py to regenerate
+# the Markdown track record. Commits the updated prediction log and
+# reports back to the repo.
+#
+# The commit IS the public record. Every prediction made by this workflow
+# is committed at the moment it is made, and cannot be revised afterwards
+# without leaving a trace in git history. That property is the whole
+# point of running this publicly.
+
+name: daily-volatility-forecast
+
+on:
+  schedule:
+    # 21:30 UTC on weekdays. US market close is 16:00 ET; 21:30 UTC is
+    # 17:30 ET during EDT (summer), 16:30 ET during EST (winter). Chosen
+    # to run after close in both DST regimes without needing a
+    # seasonal adjustment.
+    #
+    # GitHub Actions cron is UTC only. There is no timezone parameter.
+    - cron: "30 21 * * 1-5"
+
+  # Allow manual triggering from the Actions tab, for testing and
+  # for backfilling after a scheduled run fails.
+  workflow_dispatch:
+
+# Needed for the commit-back step.
+permissions:
+  contents: write
+
+# Only one run at a time; a slow run should not race a new one.
+concurrency:
+  group: daily-volatility-forecast
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Full history so the log's own git log is complete.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ----------------------------------------------------------------
+      # Step 1: make a prediction for each configured ticker.
+      #
+      # To forecast additional tickers, add them to this list. One
+      # ticker at a time is recommended until the pipeline has run
+      # cleanly for a few weeks -- a track record with one ticker and
+      # 250 predictions is more credible than five tickers with 30.
+      # ----------------------------------------------------------------
+      - name: Record predictions
+        env:
+          TICKERS: "^GSPC"
+        run: |
+          set -e
+          for ticker in $TICKERS; do
+            echo "=== live_monitor: $ticker ==="
+            python scripts/live_monitor.py \
+              --ticker "$ticker" \
+              --out "outputs/result_$(echo "$ticker" | tr -d '^/').json"
+          done
+
+      # ----------------------------------------------------------------
+      # Step 2: resolve any predictions whose horizon has elapsed.
+      #
+      # score_outcomes.py exits 0 whether or not anything resolved.
+      # A non-zero exit here means the data fetch failed; the workflow
+      # should fail loudly in that case rather than silently skip a day.
+      # ----------------------------------------------------------------
+      - name: Resolve matured predictions
+        env:
+          TICKERS: "^GSPC"
+        run: |
+          set -e
+          for ticker in $TICKERS; do
+            echo "=== score_outcomes: $ticker ==="
+            python scripts/score_outcomes.py --ticker "$ticker"
+          done
+
+      # ----------------------------------------------------------------
+      # Step 3: regenerate the Markdown track record.
+      # ----------------------------------------------------------------
+      - name: Publish track record
+        run: |
+          python scripts/publish_report.py --outdir docs/track_record
+
+      # ----------------------------------------------------------------
+      # Step 4: commit the log and reports back.
+      #
+      # The commit is the record. If this step fails, the prediction
+      # is still on disk in the runner but will be lost when the
+      # runner exits -- so this step failing is treated as a workflow
+      # failure, not a warning.
+      # ----------------------------------------------------------------
+      - name: Commit results
+        run: |
+          set -e
+          git config user.name  "cete-bot"
+          git config user.email "cete-bot@users.noreply.github.com"
+
+          git add data/predictions/ docs/track_record/ outputs/ || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          DATE=$(date -u +%Y-%m-%d)
+          git commit -m "daily forecast: ${DATE}"
+          git push
+
+      # ----------------------------------------------------------------
+      # On failure, surface the outputs/ directory so the run can be
+      # inspected without needing to reproduce it locally.
+      # ----------------------------------------------------------------
+      - name: Upload outputs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-run-outputs
+          path: outputs/
+          if-no-files-found: ignore
+          retention-days: 14

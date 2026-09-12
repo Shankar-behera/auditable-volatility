@@ -1,0 +1,17 @@
+{
+  "prediction_id": "GSPC_2026-09-11_10",
+  "ticker": "^GSPC",
+  "as_of": "2026-09-11 00:00:00",
+  "origin_date": "2026-09-11",
+  "data_source": "cache",
+  "n_observations": 750,
+  "garch_vol_forecast": 0.007986987440916655,
+  "forecast_horizon_days": 10,
+  "cete_flagged": false,
+  "cete_energy": 0.0021982856594422225,
+  "cete_flag_cutoff": 0.013536438942311633,
+  "flag_percentile_used": 95.0,
+  "window": 64,
+  "garch_params_refit": false,
+  "decision": "Screen quiet -- no anomaly signal beyond the scheduled GARCH forecast."
+}
