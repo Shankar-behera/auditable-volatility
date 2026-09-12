@@ -1,0 +1,37 @@
+
+TRANSITION DETECTION EVALUATION
+(does entropy weighting help beyond plain variance?)
+======================================================================
+Data source: cache
+Observations: 1759
+Scoring window: 64
+Changepoint window: 20
+Changepoint std ratio threshold: 2.0
+Min spacing between transitions: 30
+Detector flag percentile: 90
+Lookahead (windows): 5
+Transitions found: 23
+
+LEVEL ASSOCIATION (as expected from Parseval)
+----------------------------------------------------------------------
+  Pearson  CETE vs variance: 0.999602
+  Spearman CETE vs variance: 0.999625
+
+TRANSITION DETECTION PERFORMANCE
+----------------------------------------------------------------------
+Detector              Precision   Recall     F1  MedLag   Fires
+CETE (entropy)            0.012    0.087  0.022     1.0     170
+plain variance            0.012    0.087  0.022     1.0     170
+
+HEAD-TO-HEAD (which fired first, per transition)
+----------------------------------------------------------------------
+  CETE fired strictly earlier:   0
+  Variance fired strictly earlier: 0
+  Tied (both fired same lag):    2
+  CETE fired, variance did not:  0
+  Variance fired, CETE did not:  0
+  Neither fired:                 21
+
+INTERPRETATION
+----------------------------------------------------------------------
+Neither detector fires meaningfully earlier than the other (0 vs 0 of 23 transitions). Entropy weighting adds nothing for transition detection either. The project's finding is complete: the score is variance, full stop.

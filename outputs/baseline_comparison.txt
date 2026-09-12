@@ -1,0 +1,60 @@
+
+RETROSPECTIVE BASELINE COMPARISON
+======================================================================
+Data source: cache
+Observations: 1759
+Windows: 170
+Window size: 64
+Step: 10
+
+CETE vs SIMPLE VOLATILITY BASELINES
+----------------------------------------------------------------------
+CETE vs rolling variance:
+    Pearson  = 0.999578
+    Spearman = 0.999436
+
+CETE vs rolling standard deviation:
+    Pearson  = 0.956051
+    Spearman = 0.999436
+
+Rolling variance vs rolling standard deviation:
+    Pearson  = 0.962056
+    Spearman = 1.000000
+
+FULL-SAMPLE GARCH DESCRIPTIVE COMPARISON
+----------------------------------------------------------------------
+GARCH conditional volatility vs realized volatility:
+    Pearson  = 0.729316
+    Spearman = 0.695151
+
+CETE vs GARCH conditional volatility:
+    Pearson  = 0.727033
+
+INTERPRETATION
+----------------------------------------------------------------------
+1. CETE energy and rolling variance are computed from the
+   same historical window. Their association therefore
+   measures retrospective redundancy, NOT forecasting skill.
+
+2. A very high CETE-vs-variance correlation is expected
+   because FFT spectral power is mathematically related to
+   time-domain squared magnitude through Parseval's theorem.
+
+3. CETE's entropy weighting modifies the spectral components,
+   but the current final score remains explicitly anchored to
+   pre-dynamics spectral power.
+
+4. The GARCH result in this script is DESCRIPTIVE/IN-SAMPLE.
+   The model is fitted using the full dataset and its
+   conditional volatility is compared with historical windows.
+
+5. Therefore this script MUST NOT be used to claim that
+   GARCH is or is not a superior causal forecaster.
+
+6. The genuine forecasting comparison is implemented in:
+
+       scripts/causal_evaluation.py
+
+   where GARCH parameters are estimated only from data
+   available before each forecast origin and the forecast
+   horizon is matched to the future volatility target.

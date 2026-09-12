@@ -1,11 +1,26 @@
 __pycache__/
 *.pyc
 .pytest_cache/
-outputs/*.png
-outputs/*.txt
-!outputs/sample_results/
-.venv/
 *.egg-info/
+.venv/
+venv/
+
+# Runtime caches — never committed
+data/raw/
+data/derived/
 .cete_state/
-latest_result.json
-monitor.log
+
+# One-off outputs
+result.json
+outputs/result_*.json
+
+# Development scratch
+diagnose_*.py
+scratch/
+
+# The record IS committed:
+# data/predictions/
+# data/snapshots/
+# data/manifests/
+# docs/track_record/
+# outputs/sample_results/

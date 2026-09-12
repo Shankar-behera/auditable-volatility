@@ -1,7 +1,7 @@
 {
   "code": {
-    "git_dirty": false,
-    "git_sha": null
+    "git_dirty": true,
+    "git_sha": "26763eeb4d488a21ffee1665a0d78015b7292919"
   },
   "environment": {
     "arch": "8.0.0",

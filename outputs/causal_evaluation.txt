@@ -1,0 +1,54 @@
+
+CAUSAL FORECASTING EVALUATION
+(strict walk-forward / no future parameter leakage)
+======================================================================
+Data source: cache
+Observations: 1759
+Window: 64
+Forecast horizon: 10 observations
+Minimum GARCH training observations: 0
+GARCH refit interval: 10 origins
+Valid forecast points: 168
+
+FORECAST PERFORMANCE
+----------------------------------------------------------------------
+Model                  Pearson    Spearman           MAE          RMSE
+CETE                    0.3471      0.4586      0.006542      0.010999
+Persistence             0.4197      0.4574      0.004479      0.007430
+GARCH(1,1)              0.7781      0.6207      0.003724      0.004951
+
+Best RMSE model: GARCH(1,1)
+Best Pearson-correlation model: GARCH(1,1)
+
+INTERPRETATION
+----------------------------------------------------------------------
+CETE does NOT beat naive persistence on Pearson correlation in this walk-forward evaluation.
+GARCH remains ahead of CETE on Pearson correlation.
+
+IMPORTANT:
+The GARCH result above is genuinely causal:
+each refit uses only observations available before that
+forecast origin, and the forecast horizon matches the
+future realized-volatility target.
+
+CETE is evaluated from a trailing history only.
+The future volatility block is never passed into CETE.
+
+Correlation measures directional association, while MAE
+and RMSE measure forecast error magnitude. All three should
+be considered when judging forecasting usefulness.
+
+CAUSAL CETE SCREEN OPERATING CURVE
+(future-block event detection; no same-window target leakage)
+======================================================================
+ Threshold   Precision      Recall        F1       FPR   Alert %
+     75.0%       0.535       0.548     0.541     0.157     25.4%
+     90.0%       0.882       0.357     0.508     0.016     10.1%
+     95.0%       1.000       0.214     0.353     0.000      5.3%
+     97.5%       1.000       0.119     0.213     0.000      3.0%
+     99.0%       1.000       0.048     0.091     0.000      1.2%
+
+The screening curve is intentionally reported across
+multiple thresholds. A high percentile cutoff produces
+fewer alerts and can improve precision, but generally
+reduces recall.
