@@ -79,7 +79,7 @@ SCHEMA
 
       "code": {
         "git_sha": "abc123...",
-        "git_dirty": false
+        "code_dirty": false
       },
 
       "environment": {
@@ -278,21 +278,65 @@ def verify_snapshot(entry: dict) -> None:
 # ----------------------------------------------------------------------
 
 def _git_sha() -> tuple[Optional[str], bool]:
-    """Return (sha, dirty). sha is None if not in a git repo."""
+    """Return (sha, code_dirty).
+
+    `sha` is the current HEAD commit, or None if not in a git repo.
+
+    `code_dirty` is True if any file OUTSIDE the record directories
+    has uncommitted changes. The record directories
+    (data/predictions/, data/manifests/, data/snapshots/,
+    data/raw/, data/derived/, docs/track_record/, outputs/,
+    .cete_state/) are expected to be dirty at prediction time --
+    the prediction itself dirties them. Only code changes affect
+    what the model does, so only code changes should weaken the
+    code-provenance claim.
+
+    This distinction matters. A prediction made from a clean code
+    tree but with a fresh prediction row uncommitted is code-clean:
+    the recorded SHA is the code that ran. A prediction made after
+    editing src/regime.py without committing is not: the recorded
+    SHA is not the code that ran.
+    """
     try:
         sha = subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
             stderr=subprocess.DEVNULL,
             cwd=Path(__file__).resolve().parent.parent,
         ).decode().strip()
-        dirty_out = subprocess.check_output(
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None, False
+
+    record_prefixes = (
+        "data/predictions/",
+        "data/manifests/",
+        "data/snapshots/",
+        "data/raw/",
+        "data/derived/",
+        "docs/track_record/",
+        "outputs/",
+        ".cete_state/",
+    )
+
+    try:
+        status = subprocess.check_output(
             ["git", "status", "--porcelain"],
             stderr=subprocess.DEVNULL,
             cwd=Path(__file__).resolve().parent.parent,
-        ).decode().strip()
-        return sha, bool(dirty_out)
+        ).decode()
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return None, False
+        return sha, False
+
+    for line in status.splitlines():
+        if not line.strip():
+            continue
+        path = line[3:].strip()
+        if path.startswith('"') and path.endswith('"'):
+            path = path[1:-1]
+        path = path.replace("\\", "/")
+        if not any(path.startswith(p) for p in record_prefixes):
+            return sha, True
+
+    return sha, False
 
 
 def _env_versions() -> dict:
@@ -327,7 +371,7 @@ def build_manifest(
     this function adds the code and environment provenance and the
     schema version.
     """
-    sha, dirty = _git_sha()
+    sha, code_dirty = _git_sha()
     return {
         "schema_version": SCHEMA_VERSION,
         "prediction_id": prediction_id,
@@ -340,7 +384,7 @@ def build_manifest(
         "model_config": model_config,
         "code": {
             "git_sha": sha,
-            "git_dirty": dirty,
+            "code_dirty": code_dirty,
         },
         "environment": _env_versions(),
         "verification": {

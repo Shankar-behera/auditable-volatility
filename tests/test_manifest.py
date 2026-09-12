@@ -283,7 +283,25 @@ class TestManifestContent:
         assert "python" in m["environment"]
         assert "numpy" in m["environment"]
         assert m["verification"]["tolerance_abs"] == 1e-6
+    def test_code_field_names(self, manifest_dirs):
+        """The `code` dict has exactly two keys: git_sha and code_dirty.
+        These names appear in docs/AUDIT.md and in the manifest schema,
+        so renaming them is a breaking change that should fail here."""
+    from src.manifest import store_snapshot, build_manifest
+    data = {"omega": 1.2e-6}
+    gp, gh = store_snapshot("GSPC", "garch", data, "json")
+    df = pd.DataFrame({"date": [1], "log_return": [0.0]})
+    pp, ph = store_snapshot("GSPC", "prices", df, "parquet")
 
+    m = build_manifest(
+        prediction_id="T_2026-01-01_10",
+        ticker="GSPC", origin_date="2026-01-01",
+        horizon_days=10, window_size=64,
+        price_snapshot={"path": str(pp), "sha256": ph},
+        garch_parameters={"path": str(gp), "sha256": gh, **data},
+        model_config={"vol": "Garch"},
+    )
+    assert set(m["code"].keys()) == {"git_sha", "code_dirty"}
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
