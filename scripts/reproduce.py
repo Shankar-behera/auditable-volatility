@@ -205,7 +205,7 @@ def _report(pred: dict, manifest: dict, recomputed: float,
         print("-" * 64)
         code = manifest.get("code", {})
         print(f"  git_sha               {code.get('git_sha', '--')}")
-        print(f"  git_dirty             {code.get('git_dirty', '--')}")
+        print(f"  code_dirty             {code.get('code_dirty', '--')}")
         print()
 
     print("=" * 64)
