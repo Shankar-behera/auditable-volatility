@@ -1,6 +1,6 @@
 # GSPC — volatility forecast track record
 
-_Last updated: 2026-09-22T23:40:46+00:00_
+_Last updated: 2026-09-23T23:49:10+00:00_
 
 This is an automatically generated record of every volatility forecast made by this system for this ticker, and every subsequent realized outcome. The model is GARCH(1,1). The forecast is a `horizon`-day-ahead volatility estimate; the target is the realized standard deviation over the next `horizon` observed returns. See [METHODOLOGY.md](../METHODOLOGY.md) for the full description.
 
