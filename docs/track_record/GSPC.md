@@ -1,36 +1,36 @@
 # GSPC — volatility forecast track record
 
-_Last updated: 2026-10-01T00:39:20+00:00_
+_Last updated: 2026-10-02T00:57:57+00:00_
 
 This is an automatically generated record of every volatility forecast made by this system for this ticker, and every subsequent realized outcome. The model is GARCH(1,1). The forecast is a `horizon`-day-ahead volatility estimate; the target is the realized standard deviation over the next `horizon` observed returns. See [METHODOLOGY.md](../METHODOLOGY.md) for the full description.
 
 ## Current status
 
-- **Latest prediction**: `GSPC_2026-09-30_10`
-  - Origin date: 2026-09-30
-  - Forecast volatility (10.0-day): `0.007796`
+- **Latest prediction**: `GSPC_2026-10-01_10`
+  - Origin date: 2026-10-01
+  - Forecast volatility (10.0-day): `0.007631`
   - Screen flagged: `False`
-  - Recorded at: 2026-10-01T00:39:18+00:00
+  - Recorded at: 2026-10-02T00:57:55+00:00
 
 - **Pending predictions**: 7
-- **Resolved predictions**: 5
+- **Resolved predictions**: 6
 
 ## Accuracy (all resolved predictions)
 
-- Mean absolute error: `0.001184`
-- RMSE: `0.001383`
-- Mean error (bias): `0.000146`
-- Pearson correlation (forecast vs target): `+0.570`
+- Mean absolute error: `0.001326`
+- RMSE: `0.001511`
+- Mean error (bias): `0.000461`
+- Pearson correlation (forecast vs target): `-0.073`
 - First origin: 2024-09-01
-- Last origin: 2026-09-16
+- Last origin: 2026-09-17
 
 ## Accuracy (last 30 resolved)
 
-- N: 5
-- Mean absolute error: `0.001184`
-- RMSE: `0.001383`
-- Mean error (bias): `0.000146`
-- Pearson correlation: `+0.570`
+- N: 6
+- Mean absolute error: `0.001326`
+- RMSE: `0.001511`
+- Mean error (bias): `0.000461`
+- Pearson correlation: `-0.073`
 
 ## Resolved predictions
 
@@ -41,18 +41,19 @@ This is an automatically generated record of every volatility forecast made by t
 | 2026-09-14 | 10 | `0.007937` | `0.007260` | `0.000677` |
 | 2026-09-15 | 10 | `0.007875` | `0.007100` | `0.000775` |
 | 2026-09-16 | 10 | `0.007821` | `0.006969` | `0.000852` |
+| 2026-09-17 | 10 | `0.008175` | `0.006141` | `0.002034` |
 
 ## Pending predictions
 
 | Origin | Horizon | Forecast | Screen |
 |---|---|---|---|
-| 2026-09-17 | 10 | `0.008175` | False |
 | 2026-09-21 | 10 | `0.008653` | False |
 | 2026-09-23 | 10 | `0.008663` | False |
 | 2026-09-24 | 10 | `0.008152` | False |
 | 2026-09-28 | 10 | `0.008145` | False |
 | 2026-09-29 | 10 | `0.007942` | False |
 | 2026-09-30 | 10 | `0.007796` | False |
+| 2026-10-01 | 10 | `0.007631` | False |
 
 ---
 
