@@ -1,18 +1,18 @@
 # GSPC — volatility forecast track record
 
-_Last updated: 2026-10-02T00:57:57+00:00_
+_Last updated: 2026-10-03T00:34:56+00:00_
 
 This is an automatically generated record of every volatility forecast made by this system for this ticker, and every subsequent realized outcome. The model is GARCH(1,1). The forecast is a `horizon`-day-ahead volatility estimate; the target is the realized standard deviation over the next `horizon` observed returns. See [METHODOLOGY.md](../METHODOLOGY.md) for the full description.
 
 ## Current status
 
-- **Latest prediction**: `GSPC_2026-10-01_10`
-  - Origin date: 2026-10-01
-  - Forecast volatility (10.0-day): `0.007631`
+- **Latest prediction**: `GSPC_2026-10-02_10`
+  - Origin date: 2026-10-02
+  - Forecast volatility (10.0-day): `0.007689`
   - Screen flagged: `False`
-  - Recorded at: 2026-10-02T00:57:55+00:00
+  - Recorded at: 2026-10-03T00:34:55+00:00
 
-- **Pending predictions**: 7
+- **Pending predictions**: 8
 - **Resolved predictions**: 6
 
 ## Accuracy (all resolved predictions)
@@ -54,6 +54,7 @@ This is an automatically generated record of every volatility forecast made by t
 | 2026-09-29 | 10 | `0.007942` | False |
 | 2026-09-30 | 10 | `0.007796` | False |
 | 2026-10-01 | 10 | `0.007631` | False |
+| 2026-10-02 | 10 | `0.007689` | False |
 
 ---
 
