@@ -1,6 +1,6 @@
 # Volatility forecast track record
 
-_Last updated: 2026-10-14T00:26:09+00:00_
+_Last updated: 2026-10-14T23:59:47+00:00_
 
 Automated record of volatility forecasts and their realized outcomes. Every forecast is logged at prediction time and cannot be revised; every outcome is filled in when the forecast horizon elapses. See [METHODOLOGY.md](../METHODOLOGY.md) for the model and evaluation description.
 
