@@ -1,12 +1,12 @@
 # Volatility forecast track record
 
-_Last updated: 2026-11-20T02:27:38+00:00_
+_Last updated: 2026-11-21T02:37:16+00:00_
 
 Automated record of volatility forecasts and their realized outcomes. Every forecast is logged at prediction time and cannot be revised; every outcome is filled in when the forecast horizon elapses. See [METHODOLOGY.md](../METHODOLOGY.md) for the model and evaluation description.
 
 | Ticker | Pending | Resolved | Latest forecast | Latest origin | All-time corr |
 |---|---|---|---|---|---|
-| [GSPC](GSPC.md) | 10 | 35 | `0.012319` | 2026-11-19 | +0.261 |
+| [GSPC](GSPC.md) | 10 | 36 | `0.016412` | 2026-11-20 | +0.333 |
 
 ---
 
